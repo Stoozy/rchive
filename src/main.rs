@@ -3,8 +3,8 @@ use fltk::*;
 
 mod callbacks{
     pub fn open_cb(){
-
     }
+
 }
 
 pub fn main(){
