@@ -8,4 +8,6 @@ edition = "2018"
 
 [dependencies]
 fltk = "^0.14"
+zip = "0.5.10"
+lzma = "*"
 
