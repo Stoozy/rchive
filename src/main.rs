@@ -5,6 +5,8 @@ use std::io::{self, Read};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 mod events;
 mod rzip;
 
@@ -189,8 +191,10 @@ pub fn main(){
             }else if inp == 'b' {                    
                 println!("Please enter the path of the zip file: ");
                 let zippath = PathBuf::from(get_string_input());
+                let extract_dir = zippath.file_stem().unwrap();
+                println!("File will be extracted to {:?}", extract_dir);
 
-                 
+                rzip::unzip(zippath.as_path().display().to_string() , PathBuf::from(extract_dir));
             }
 
         }

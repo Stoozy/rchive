@@ -2,6 +2,7 @@ use std::fs::File;
 use std::fs;
 use zip::*;
 use std::io::Write;
+use std::path::PathBuf;
 
 pub fn get_file_from_path(path: String) -> File {
     let file = File::open(path).unwrap();
@@ -39,4 +40,11 @@ pub fn zip_files(mut file: String, filepaths: Vec<String>, files : Vec<String>) 
     zip.finish().unwrap();
 
     println!("Successfully created zip file!");
+}
+
+pub fn unzip(filename : String, dir_path : PathBuf){
+    let zipfile = get_file_from_path(filename);
+    let mut zip = zip::ZipArchive::new(zipfile).unwrap();
+
+    zip.extract(dir_path);
 }
