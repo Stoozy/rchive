@@ -1,4 +1,4 @@
-use fltk::{browser::*, app::*, button::*, image::*, frame::*, window::*};
+use fltk::{widget::*,browser::*, app::*, button::*, image::*, frame::*, window::*};
 use fltk::*;
 use std::env;
 use std::io::{self, Read};
@@ -7,15 +7,15 @@ use std::io::prelude::*;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
-mod events;
 mod rzip;
-
+use std::ops::{Deref, DerefMut};
 
 
 #[derive(Copy, Clone)]
 pub enum Message{
     FileCreate,
     FileOpen,
+    About,
     Exit,
 }
 
@@ -26,22 +26,31 @@ pub fn start_gui(){
     app::set_scheme(app::Scheme::Base);
 
     let mut win = Window::new(500, 200, 600, 600, "rzip");
+    let mut menubar = menu::SysMenuBar::new(0, 0, 600, 25, "");
     let frame = Frame::new(0,0,400, 200, "");
 
+    //let mut list = ListWidget::new(0, 30, 500, 500, "");
 
-    let mut menubar = menu::SysMenuBar::new(0, 0, 600, 25, "");
 
     let (sender, receiver) = app::channel();
     let mut folder_ico = SharedImage::load("./icons/folder.png").unwrap();
 
-    let mut table = table::Table::new(5,20,500,500 ,"");
 
-    //let widths = &[100, 150, 150, 150, 150];
-    //let mut b = browser::MultiBrowser::new(1,25,580, 500, "");
+    //let mut tab = table::Table::new(0,50,600, 500, "");
+    //tab.set_table_frame(FrameType::BorderBox);
+    //tab.set_col_header(true);
+    //tab.set_col_header_height(20);
+    //tab.set_cols(5);
+    //tab.set_rows(5);
+    //tab.set_col_width_all(200);
+    //tab.set_top_row(20);
 
-    //b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
-    //b.set_column_char('\t');
-    //b.set_column_widths(widths);
+    let widths = &[100, 150, 150, 150, 150];
+    let mut b = browser::MultiBrowser::new(1,25,580, 500, "");
+
+    b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
+    b.set_column_char('\t');
+    b.set_column_widths(widths);
     //b.add("One\t20\t02/01/2021\tYesterday\tToday\t");
     //b.set_icon(2, Some(folder_ico));
 
@@ -71,6 +80,24 @@ pub fn start_gui(){
         Message::Exit
     );
 
+    menubar.add_emit(
+        "&Edit/Select all \t",
+        Shortcut::None,
+        menu::MenuFlag::Normal,
+        sender,
+        Message::Exit
+    );
+
+    menubar.add_emit(
+        "&Help/About rzip \t",
+        Shortcut::None,
+        menu::MenuFlag::Normal,
+        sender,
+        Message::About
+    );
+
+
+
    
     win.end();
     win.make_resizable(true);
@@ -79,18 +106,22 @@ pub fn start_gui(){
         if let Some(msg) =  receiver.recv(){
             match msg{
                 Message::FileCreate =>{
-                    events::file_new_handler();
+                    rzip::file_new_handler();
                 },
                 Message::FileOpen => {
 
-                    let files = events::get_entries();
-                    for i in &files{
-                        println!("{}", i);
+                    let mut files = rzip::get_entries();
+                    for mut file in files{
+                        file.push_str("\t\t\t\t\t");
+                        b.add(file.as_str());
+                        //b.add("Test\tTest\ttest\ttest\ttest\t")
                     }
-
                 },
                 Message::Exit =>{
                     app.quit();
+                },
+                Message::About => {
+                    fltk::dialog::message(800, 500, "Made by stoozy (c) 2021");
                 }
             }
 
@@ -157,7 +188,7 @@ pub fn main(){
     if argc==0 {
         start_gui();
     } else{
-        if(!vec_contains(args, "--nogui".to_string())){
+        if !vec_contains(args, "--nogui".to_string()) {
             start_gui();
         }else{
             println!("Welcome to rzip!\n\t(a) Create new zip file\n\t(b) Unzip a file\n\t(c) exit\nPlease select an option:");

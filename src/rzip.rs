@@ -1,8 +1,11 @@
 use std::fs::File;
 use std::fs;
-use zip::*;
 use std::io::Write;
 use std::path::PathBuf;
+use fltk::{browser::*, app::*, button::*, frame::*, window::*};
+use fltk::*;
+use zip::*;
+
 
 pub fn get_file_from_path(path: String) -> File {
     let file = File::open(path).unwrap();
@@ -46,5 +49,41 @@ pub fn unzip(filename : String, dir_path : PathBuf){
     let zipfile = get_file_from_path(filename);
     let mut zip = zip::ZipArchive::new(zipfile).unwrap();
 
-    zip.extract(dir_path);
+    zip.extract(dir_path).unwrap();
 }
+
+
+pub fn get_entries() -> Vec<String> {
+    let mut ret: Vec<String> = Vec::new();
+
+    let mut browser = dialog::FileDialog::new(dialog::FileDialogType::BrowseFile);
+    browser.set_filter("");
+    browser.show();
+
+    let path : std::path::PathBuf = browser.filename();
+    println!("Chosen file is: {:?}", path.to_str());
+
+    let mut file = File::open(&path).unwrap();
+
+    let mut zipfile = zip::ZipArchive::new(file).unwrap();
+    //let mut iter = zipfile.file_names();
+    for i in 0..zipfile.len() {
+        ret.push(zipfile.by_index(i).unwrap().name().to_string());
+    }
+
+    return ret;
+}
+
+pub fn file_new_handler(){
+    println!("Test");
+}
+
+pub fn has_dir(s : String) -> bool {
+    for c in s.chars(){
+        if c == '/' {
+            return true;
+        }
+    }
+    return false;
+}
+
