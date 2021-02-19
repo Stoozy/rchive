@@ -9,14 +9,19 @@ use std::path::Path;
 use std::path::PathBuf;
 mod rzip;
 use std::ops::{Deref, DerefMut};
-
+use rzip::DirEntry;
 
 #[derive(Copy, Clone)]
 pub enum Message{
     FileCreate,
     FileOpen,
+    ExtractAll,
     About,
     Exit,
+}
+
+pub fn item_clicked_cb(){
+    println!("item was clicked!");
 }
 
 pub fn start_gui(){
@@ -45,12 +50,15 @@ pub fn start_gui(){
     //tab.set_col_width_all(200);
     //tab.set_top_row(20);
 
-    let widths = &[100, 150, 150, 150, 150];
+    let widths = &[250, 150, 150, 150, 150];
     let mut b = browser::MultiBrowser::new(1,25,580, 500, "");
 
     b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
     b.set_column_char('\t');
     b.set_column_widths(widths);
+
+    b.set_callback(item_clicked_cb);
+
     //b.add("One\t20\t02/01/2021\tYesterday\tToday\t");
     //b.set_icon(2, Some(folder_ico));
 
@@ -71,6 +79,15 @@ pub fn start_gui(){
         sender,
         Message::FileOpen
     );
+    
+    menubar.add_emit(
+        "&File/Extract All \t",
+        Shortcut::Ctrl | 'a',
+        menu::MenuFlag::Normal,
+        sender,
+        Message::ExtractAll
+    );
+
 
     menubar.add_emit(
         "&File/Exit \t",
@@ -97,7 +114,7 @@ pub fn start_gui(){
     );
 
 
-
+    
    
     win.end();
     win.make_resizable(true);
@@ -105,17 +122,31 @@ pub fn start_gui(){
     while app.wait(){
         if let Some(msg) =  receiver.recv(){
             match msg{
-                Message::FileCreate =>{
+                Message::FileCreate => {
                     rzip::file_new_handler();
                 },
                 Message::FileOpen => {
 
                     let mut files = rzip::get_entries();
-                    for mut file in files{
-                        file.push_str("\t\t\t\t\t");
-                        b.add(file.as_str());
-                        //b.add("Test\tTest\ttest\ttest\ttest\t")
+
+                    //for mut folder in files.get_dirs(){
+                    //    b.add(format!("{}\t\t\t\t\t", folder.get_cdir()).as_str());
+                    //}
+
+                    for mut folder in files.dirs {
+                        println!("Found a folder {} ", folder.get_name());
+                        b.add(format!("{}\t\t\t\t\t", folder.get_name()).as_str());
                     }
+
+                    for mut file in files.files {
+                        println!("Found a file {} ", file);
+                        b.add(format!("{}\t\t\t\t\t", file).as_str());
+                    }
+                    
+
+                },
+                Message::ExtractAll => {
+                    println!("Extract all clicked!");
                 },
                 Message::Exit =>{
                     app.quit();
@@ -123,6 +154,7 @@ pub fn start_gui(){
                 Message::About => {
                     fltk::dialog::message(800, 500, "Made by stoozy (c) 2021");
                 }
+
             }
 
         }
@@ -219,6 +251,7 @@ pub fn main(){
                 }
 
                 rzip::zip_files(filename, filepaths, files);
+
             }else if inp == 'b' {                    
                 println!("Please enter the path of the zip file: ");
                 let zippath = PathBuf::from(get_string_input());
