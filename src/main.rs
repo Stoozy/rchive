@@ -36,6 +36,8 @@ pub fn item_clicked_cb(){
     println!("item was clicked!");
 }
 
+
+
 pub fn start_gui(){
 
     let app = App::default();
@@ -49,11 +51,14 @@ pub fn start_gui(){
 
     //let mut list = ListWidget::new(0, 30, 500, 500, "");
 
+    // x: 1, y: 27, h: 25, w: 25
+    // yend: 25+27, xend: 1+25
+    // ybeg: 27, xbeg: 1
     let mut nav_back_btn = button::Button::new(1, 27, 25, 25, "🡠");
-    let mut pathbuf = text::TextBuffer::default();
-    let mut pathdisp = text::TextDisplay::new(25, 27, 550, 25, "") ;
-    pathbuf.set_text("");
-    pathdisp.set_buffer(Some(pathbuf));
+    
+
+
+    let mut pathdisp = text::TextDisplay::new(25, 27, 600, 25, "") ;
     pathdisp.set_frame(FrameType::BorderBox);
 
     let (sender, receiver) = app::channel();
@@ -70,6 +75,8 @@ pub fn start_gui(){
     //tab.set_col_width_all(200);
     //tab.set_top_row(20);
 
+    let mut path : String = "".to_string();
+
     let widths = &[250, 150, 150, 150, 150];
     let mut b = browser::MultiBrowser::new(1,55,600, 500, "");
 
@@ -80,6 +87,9 @@ pub fn start_gui(){
 
     // map line to Item
     let mut itemsmap : HashMap<u32, Item> = HashMap::new();
+
+    // directories traversed
+    let mut nav_dirs : Vec<DirEntry> = Vec::new(); // first item is root dir
 
     menubar.add_emit(
         "&File/New Archive\t",
@@ -144,7 +154,72 @@ pub fn start_gui(){
 
     while app.wait(){
 
+
         if app::event_is_click() {
+
+            // clicked on back btn
+            if (app::event_x() < 26 && app::event_x() > 1) && (app::event_y() < 52 && app::event_y() > 27){
+                println!("Clicked on back button!");
+
+                println!("Length of nav_dirs is {}", nav_dirs.len());
+
+                if nav_dirs.len() != 1 {
+                    let mut last  = nav_dirs.len()-2;
+                    let mut prev_dir = nav_dirs.get_mut(last).unwrap();
+
+                    itemsmap.clear();
+                    let mut buf = pathdisp.buffer().unwrap();
+                    let mut np = buf.line_text(1);
+
+                    let mut split : Vec<&str> = np.as_str().split("\\").collect();
+                    //let mut splitvec :  = split.collect();
+
+                    let mut new_path : String = "".to_string();
+
+                    for i in 0..split.len()-2 {
+                        new_path.push_str(split[i]);
+                        new_path.push_str("\\");
+                    }
+                    path = new_path;
+                    buf.set_text(path.as_str());
+
+                    // clear lines
+                    b.clear();
+                    lc = 2;
+
+
+                    b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
+                    b.set_column_char('\t');
+                    b.set_column_widths(widths);
+
+                    for mut folder in prev_dir.dirs.clone() {
+                        println!("Found a folder {} ", folder.get_name());
+
+                        let fico = image::PngImage::load("./icons/folder.png").unwrap();
+
+                        b.insert(lc, format!("{}\t\t\t\t\t", folder.get_name().as_str()).as_str());
+                        b.set_icon(lc, Some(fico));
+                        
+                        itemsmap.insert(lc, Item::Dir(folder));
+                        lc +=1;
+                    }
+
+                    for mut file in prev_dir.files.clone() {
+                        println!("Found a file {} ", file);
+                        //b.add(format!("{}\t\t\t\t\t", file).as_str());
+                        b.insert(lc, format!("{}\t\t\t\t\t", file).as_str());
+                        b.set_icon(lc, Some(file_ico.clone()));
+
+                        itemsmap.insert(lc, Item::File(file));
+                        lc+=1;
+                    }
+
+                    // pop last
+                    nav_dirs.pop();
+
+                }
+            }
+
             let mut total_selected : u32 = 0;
             for i in 2..=b.size(){
                 if b.selected(i){
@@ -162,23 +237,35 @@ pub fn start_gui(){
                     }
                 }
             } 
+
             if selected != 0 {
             match itemsmap.clone().get(&selected).unwrap() {
                 Item::Dir(dirent) => {
+
+                    // update navigated dirs
+                    nav_dirs.push(dirent.clone());
+
+                    path.push_str(dirent.get_name().as_str());
+                    path.push_str("\\");
+
+                    let mut new_pathbuf = text::TextBuffer::default();
+                    new_pathbuf.set_text(path.as_str());
+                    pathdisp.set_buffer(new_pathbuf);
+
                     itemsmap.clear();
                     // clear lines
                     b.clear();
                     lc = 2;
 
+
+
                     b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
                     b.set_column_char('\t');
                     b.set_column_widths(widths);
 
-
                     for mut folder in dirent.dirs.clone() {
                         println!("Found a folder {} ", folder.get_name());
 
-                        //b.add(format!("{}\t\t\t\t\t", folder.get_name()).as_str());
                         let fico = image::PngImage::load("./icons/folder.png").unwrap();
 
                         b.insert(lc, format!("{}\t\t\t\t\t", folder.get_name().as_str()).as_str());
@@ -219,12 +306,18 @@ pub fn start_gui(){
                     rzip::file_new_handler();
                 },
                 Message::FileOpen => {
+
                     let (mut files, mut zipfilepath) = rzip::get_entries();
-                    //pathbuf.set_text(zipfilepath.as_str());
+                    zipfilepath.push_str("\\");
+
                     let mut zipbuf = text::TextBuffer::default();
-                    zipbuf.set_text(zipfilepath.as_str());
+                    path = zipfilepath.as_str().to_string();
+                    zipbuf.set_text(path.as_str());
+
+                    nav_dirs.push(files.clone());
 
                     pathdisp.set_buffer(zipbuf);
+
                     // clear lines
                     b.clear();
                     lc = 2;
