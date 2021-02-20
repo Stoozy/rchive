@@ -12,6 +12,7 @@ use zip::*;
 //    Files(Vec<PathBuf>)
 //}
 
+
 #[derive(Debug, Clone)]
 pub struct DirEntry{
     cdir: String,
@@ -144,13 +145,13 @@ pub fn get_entries() ->  DirEntry {
 
 
         let mut path = PathBuf::from(file);
-        println!("Got file path {}", file);
+        //println!("Got file path {}", file);
 
         let mut components = path.components();
         let mut comp_vec: Vec<String> = Vec::new();
 
         for comp in components {
-            println!("{} ", comp.as_os_str().to_str().unwrap());
+            //println!("{} ", comp.as_os_str().to_str().unwrap());
             comp_vec.push(String::from(comp.as_os_str().to_str().unwrap()));
         } 
 
@@ -159,22 +160,23 @@ pub fn get_entries() ->  DirEntry {
                 if i == comp_vec.len()-1 {
                     // is file 
                     (*cur_dir).add_file(comp_vec[i].clone());
-                    //cur_dir.add_file(comp_vec[i].clone());
-                    println!("Added file {} to {}", comp_vec[i].clone(), cur_dir.get_name());
+                    //println!("Added file {} to {}", comp_vec[i].clone(), cur_dir.get_name());
+                }else{
+                    let mut folder_name = String::from(comp_vec[i].clone());
+
+                    if !cur_dir.contains_dir(String::from(comp_vec[i].clone())) {
+                        let mut new_dir = DirEntry{cdir: folder_name, dirs: Vec::new(), files: Vec::new()};
+                        let mut i : usize = (*cur_dir).add_dir(new_dir.clone());
+
+                        cur_dir = & mut cur_dir.dirs[i];
+                    }
+                    if cur_dir.dirs.len() != 0 {
+                        let mut i : usize = (*cur_dir).find_child_dir(String::from(comp_vec[i].clone()));
+                        cur_dir = & mut cur_dir.dirs[i];
+                    }
+
                 }
                 
-                let mut folder_name = String::from(comp_vec[i].clone());
-
-                if !cur_dir.contains_dir(String::from(comp_vec[i].clone())) {
-                    let mut new_dir = DirEntry{cdir: folder_name, dirs: Vec::new(), files: Vec::new()};
-                    let mut i : usize = (*cur_dir).add_dir(new_dir.clone());
-                    
-                    cur_dir = & mut cur_dir.dirs[i];
-                }
-                if cur_dir.dirs.len() != 0 {
-                    let mut i : usize = (*cur_dir).find_child_dir(String::from(comp_vec[i].clone()));
-                    cur_dir = & mut cur_dir.dirs[i];
-                }
 
             }
             cur_dir = & mut ret;

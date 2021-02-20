@@ -7,9 +7,15 @@ use std::io::prelude::*;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use std::collections::HashMap;
+use std::{thread, time};
 mod rzip;
 use std::ops::{Deref, DerefMut};
 use rzip::DirEntry;
+
+
+
+
 
 #[derive(Copy, Clone)]
 pub enum Message{
@@ -18,6 +24,12 @@ pub enum Message{
     ExtractAll,
     About,
     Exit,
+}
+
+#[derive(Clone)]
+pub enum Item {
+    Dir(DirEntry),
+    File(String)
 }
 
 pub fn item_clicked_cb(){
@@ -29,16 +41,27 @@ pub fn start_gui(){
     let app = App::default();
     app::background(255, 255, 255);
     app::set_scheme(app::Scheme::Base);
+    app::set_frame_type(FrameType::BorderBox);
 
-    let mut win = Window::new(500, 200, 600, 600, "rzip");
+    let mut win = Window::new(500, 200, 600, 500, "rzip");
     let mut menubar = menu::SysMenuBar::new(0, 0, 600, 25, "");
     let frame = Frame::new(0,0,400, 200, "");
 
     //let mut list = ListWidget::new(0, 30, 500, 500, "");
 
-
+    let mut nav_back_btn = button::Button::new(1, 27, 20, 20, "🡠");
+    let mut pathbuf = text::TextBuffer::default();
+    let mut pathdisp = text::TextDisplay::new(20, 27, 500, 20, "") ;
+    pathbuf.set_text("Test");
+    pathdisp.set_buffer(Some(pathbuf));
+    pathdisp.scroll(
+        //pathdisp.count_lines(0, pathdisp.buffer().unwrap().length(), false),
+        0,
+        0,
+    );
     let (sender, receiver) = app::channel();
     let mut folder_ico = SharedImage::load("./icons/folder.png").unwrap();
+    let mut file_ico = SharedImage::load("./icons/file.png").unwrap();
 
 
     //let mut tab = table::Table::new(0,50,600, 500, "");
@@ -51,17 +74,15 @@ pub fn start_gui(){
     //tab.set_top_row(20);
 
     let widths = &[250, 150, 150, 150, 150];
-    let mut b = browser::MultiBrowser::new(1,25,580, 500, "");
+    let mut b = browser::MultiBrowser::new(1,50,600, 500, "");
 
     b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
     b.set_column_char('\t');
     b.set_column_widths(widths);
 
-    b.set_callback(item_clicked_cb);
 
-    //b.add("One\t20\t02/01/2021\tYesterday\tToday\t");
-    //b.set_icon(2, Some(folder_ico));
-
+    // map line to Item
+    let mut itemsmap : HashMap<u32, Item> = HashMap::new();
 
 
     menubar.add_emit(
@@ -115,32 +136,124 @@ pub fn start_gui(){
 
 
     
+    let mut lc : u32 = 2;
    
+    let app_icon = image::PngImage::load("./icons/rzip.png").unwrap();
+    win.set_icon(Some(app_icon));
+
+
     win.end();
     win.make_resizable(true);
     win.show();
+
     while app.wait(){
+
+        if app::event_is_click() {
+            let mut total_selected : u32 = 0;
+            for i in 2..=b.size(){
+                if b.selected(i){
+                    total_selected += 1;
+                }
+            }
+
+
+            let mut selected : u32 = 0;
+            if total_selected == 1 {
+                for i in 2..=b.size() {
+                    if b.selected(i){
+                        selected = i;
+                        break;
+                    }
+                }
+            } 
+            if selected != 0 {
+            match itemsmap.clone().get(&selected).unwrap() {
+                Item::Dir(dirent) => {
+                    itemsmap.clear();
+                    // clear lines
+                    b.clear();
+                    lc = 2;
+
+                    b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
+                    b.set_column_char('\t');
+                    b.set_column_widths(widths);
+
+
+                    for mut folder in dirent.dirs.clone() {
+                        println!("Found a folder {} ", folder.get_name());
+
+                        //b.add(format!("{}\t\t\t\t\t", folder.get_name()).as_str());
+                        let fico = image::PngImage::load("./icons/folder.png").unwrap();
+
+                        b.insert(lc, format!("{}\t\t\t\t\t", folder.get_name().as_str()).as_str());
+                        b.set_icon(lc, Some(fico));
+                        
+                        itemsmap.insert(lc, Item::Dir(folder));
+                        lc +=1;
+                    }
+
+                    for mut file in dirent.files.clone() {
+                        println!("Found a file {} ", file);
+                        //b.add(format!("{}\t\t\t\t\t", file).as_str());
+                        b.insert(lc, format!("{}\t\t\t\t\t", file).as_str());
+                        b.set_icon(lc, Some(file_ico.clone()));
+
+                        itemsmap.insert(lc, Item::File(file));
+                        lc+=1;
+                    }
+                   
+
+                    println!("Clicked on folder {}", dirent.get_name());
+                },
+                Item::File(name) => {
+                    println!("Clicked on file {}", name);
+                }
+            }
+
+
+            }
+            //println!("Total selected: {}", total_selected);
+
+            thread::sleep(time::Duration::from_millis(1000));
+        }
+
         if let Some(msg) =  receiver.recv(){
             match msg{
                 Message::FileCreate => {
                     rzip::file_new_handler();
                 },
                 Message::FileOpen => {
-
                     let mut files = rzip::get_entries();
 
-                    //for mut folder in files.get_dirs(){
-                    //    b.add(format!("{}\t\t\t\t\t", folder.get_cdir()).as_str());
-                    //}
+                    // clear lines
+                    b.clear();
+                    lc = 2;
+
+                    b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
+                    b.set_column_char('\t');
+                    b.set_column_widths(widths);
+
 
                     for mut folder in files.dirs {
                         println!("Found a folder {} ", folder.get_name());
-                        b.add(format!("{}\t\t\t\t\t", folder.get_name()).as_str());
+
+                        //b.add(format!("{}\t\t\t\t\t", folder.get_name()).as_str());
+                        let fico = image::PngImage::load("./icons/folder.png").unwrap();
+                        b.insert(lc, format!("{}\t\t\t\t\t", folder.get_name().as_str()).as_str());
+                        b.set_icon(lc, Some(fico));
+
+                        itemsmap.insert(lc, Item::Dir(folder));
+                        lc +=1;
                     }
 
                     for mut file in files.files {
                         println!("Found a file {} ", file);
-                        b.add(format!("{}\t\t\t\t\t", file).as_str());
+                        //b.add(format!("{}\t\t\t\t\t", file).as_str());
+                        b.insert(lc, format!("{}\t\t\t\t\t", file).as_str());
+                        b.set_icon(lc, Some(file_ico.clone()));
+
+                        itemsmap.insert(lc, Item::File(file));
+                        lc+=1;
                     }
                     
 
@@ -206,7 +319,6 @@ pub fn vec_contains(mut vec : Vec<String>, find : String) -> bool {
 }
 
 pub fn main(){
-
     let mut argc = 0;
     let mut args:Vec<String> = vec![];
 
@@ -264,5 +376,6 @@ pub fn main(){
         }
 
     }
+
 }
 

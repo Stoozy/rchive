@@ -11,4 +11,7 @@ fltk = "^0.14"
 zip = "0.5.10"
 lzma = "*"
 
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+
 
