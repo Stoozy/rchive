@@ -17,7 +17,7 @@ use zip::*;
 pub struct DirEntry{
     cdir: String,
     pub dirs: Vec<DirEntry>,
-    pub files: Vec<String>,
+    pub files: Vec<(String, u64)>,
 }
 
 impl DirEntry {
@@ -27,7 +27,7 @@ impl DirEntry {
     pub fn get_dirs(&self) -> Vec<DirEntry> {
         return self.dirs.clone();
     }
-    pub fn get_files(&self) -> Vec<String>{
+    pub fn get_files(&self) -> Vec<(String, u64)>{
         return self.files.clone();
     }
 
@@ -62,8 +62,8 @@ impl DirEntry {
         return idx;
     }
 
-    pub fn add_file(& mut self, file : String ) -> () {
-        self.files.push(file);
+    pub fn add_file(& mut self, file : String, size: u64 ) -> () {
+        self.files.push((file, size));
     }
     
 
@@ -74,6 +74,37 @@ pub fn get_file_from_path(path: String) -> File {
     let file = File::open(path).unwrap();
     return file;
 }
+
+pub fn create_new_zip(mut file: String, filepaths: Vec<PathBuf>){
+    let zipfile = File::create(file).unwrap();
+    let mut zip = zip::ZipWriter::new(zipfile);
+
+    let options = zip::write::FileOptions::default()
+        .compression_method(zip::CompressionMethod::Stored);
+
+    for i in 0..filepaths.len(){
+        let cfp = &filepaths[i];
+        //let comp_list : Vec<&str> = cfp.components().collect();
+        let cf : String = cfp.file_name().unwrap().to_os_string().into_string().unwrap();
+        println!("Got file {}", cf.as_str());
+
+        match fs::read(cfp){
+            Ok(val) => {
+                println!("Writing {} to zip file", cf.as_str());
+                zip.start_file(cf, options).unwrap();
+                zip.write(&val).unwrap();
+            }
+            Err(e) => {
+                println!("Error occured: {}",e);
+                //println!("Path was: {}", cfp.into_os_string().into_string().unwrap());
+            }
+        }
+    }
+    
+    zip.finish().unwrap();
+
+}
+
 
 pub fn zip_files(mut file: String, filepaths: Vec<String>, files : Vec<String>) -> (){
     // add file extension before creating
@@ -90,11 +121,11 @@ pub fn zip_files(mut file: String, filepaths: Vec<String>, files : Vec<String>) 
     for i in 0..filepaths.len(){
         let cfp = &filepaths[i];
         let cf  = &files[i];
-        match fs::read_to_string(cfp){
+        match fs::read(cfp){
             Ok(val) => {
                 println!("Writing {} to zip file", cf);
                 zip.start_file(cf, options).unwrap();
-                zip.write(val.as_bytes()).unwrap();
+                zip.write(&val).unwrap();
             }
             Err(e) => {
                 println!("Error occured: {}",e);
@@ -134,7 +165,7 @@ pub fn get_entries() ->  (DirEntry, String){
     let mut file = File::open(&path).unwrap();
     let mut zipfile = zip::ZipArchive::new(file).unwrap();
 
-    let mut files = zipfile.file_names();
+    //let mut files = zipfile.file_names();
 
 
     // add dir if not found
@@ -142,12 +173,14 @@ pub fn get_entries() ->  (DirEntry, String){
     // add file to parent dirs files
     // repeat for every file
 
-    for file in files {
+    for i in 0..zipfile.len() {
+        let file = zipfile.by_index(i).unwrap();
+
         // has folders
         let mut cur_dir: & mut DirEntry = & mut ret;
 
 
-        let mut path = PathBuf::from(file);
+        let mut path = PathBuf::from(file.name());
         //println!("Got file path {}", file);
 
         let mut components = path.components();
@@ -162,7 +195,7 @@ pub fn get_entries() ->  (DirEntry, String){
             for i in 0..comp_vec.len() {
                 if i == comp_vec.len()-1 {
                     // is file 
-                    (*cur_dir).add_file(comp_vec[i].clone());
+                    (*cur_dir).add_file(comp_vec[i].clone(), file.size());
                     //println!("Added file {} to {}", comp_vec[i].clone(), cur_dir.get_name());
                 }else{
                     let mut folder_name = String::from(comp_vec[i].clone());
@@ -185,7 +218,7 @@ pub fn get_entries() ->  (DirEntry, String){
             cur_dir = & mut ret;
         }else{
             cur_dir = & mut ret;
-            (*cur_dir).add_file(file.to_string());
+            (*cur_dir).add_file(file.name().to_string(), file.size());
         }
     }
 
@@ -193,9 +226,80 @@ pub fn get_entries() ->  (DirEntry, String){
     (ret,filepath)
 }
 
-pub fn file_new_handler(){
-    println!("Test");
+pub fn get_entries_from_file(path: PathBuf) ->  (DirEntry, String){
+
+    let mut ret: DirEntry =  DirEntry{cdir: String::from("/"), dirs: Vec::new(), files: Vec::new() };
+    // TODO: check file ext for compatibility (.zip only for now)
+    println!("Chosen file is: {:?}", path.to_str());
+
+    let mut filepath: String = String::from(path.to_str().unwrap());
+
+
+    let mut file = File::open(&path).unwrap();
+    let mut zipfile = zip::ZipArchive::new(file).unwrap();
+
+    //let mut files = zipfile.file_names();
+
+
+    // add dir if not found
+    // continue until parent dir of file is found
+    // add file to parent dirs files
+    // repeat for every file
+
+    for i in 0..zipfile.len() {
+        let file = zipfile.by_index(i).unwrap();
+
+        // has folders
+        let mut cur_dir: & mut DirEntry = & mut ret;
+
+
+        let mut path = PathBuf::from(file.name());
+        //println!("Got file path {}", file);
+
+        let mut components = path.components();
+        let mut comp_vec: Vec<String> = Vec::new();
+
+        for comp in components {
+            //println!("{} ", comp.as_os_str().to_str().unwrap());
+            comp_vec.push(String::from(comp.as_os_str().to_str().unwrap()));
+        } 
+
+        if comp_vec.len() > 1 {
+            for i in 0..comp_vec.len() {
+                if i == comp_vec.len()-1 {
+                    // is file 
+                    (*cur_dir).add_file(comp_vec[i].clone(), file.size());
+                    //println!("Added file {} to {}", comp_vec[i].clone(), cur_dir.get_name());
+                }else{
+                    let mut folder_name = String::from(comp_vec[i].clone());
+
+                    if !cur_dir.contains_dir(String::from(comp_vec[i].clone())) {
+                        let mut new_dir = DirEntry{cdir: folder_name, dirs: Vec::new(), files: Vec::new()};
+                        let mut i : usize = (*cur_dir).add_dir(new_dir.clone());
+
+                        cur_dir = & mut cur_dir.dirs[i];
+                    }
+                    if cur_dir.dirs.len() != 0 {
+                        let mut i : usize = (*cur_dir).find_child_dir(String::from(comp_vec[i].clone()));
+                        cur_dir = & mut cur_dir.dirs[i];
+                    }
+
+                }
+                
+
+            }
+            cur_dir = & mut ret;
+        }else{
+            cur_dir = & mut ret;
+            (*cur_dir).add_file(file.name().to_string(), file.size());
+        }
+    }
+
+
+    (ret,filepath)
 }
+
+
 
 pub fn has_dir(s : String) -> bool {
     for c in s.chars(){

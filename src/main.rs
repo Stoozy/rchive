@@ -17,7 +17,7 @@ use rzip::DirEntry;
 
 #[derive(Copy, Clone)]
 pub enum Message{
-    FileCreate,
+    FileCreateZip,
     FileOpen,
     ExtractAll,
     About,
@@ -45,7 +45,7 @@ pub fn start_gui(){
 
     let mut win = Window::new(500, 200, 600, 500, "rzip");
     let mut menubar = menu::SysMenuBar::new(0, 0, 600, 25, "");
-    let frame = Frame::new(0,0,400, 200, "");
+    let frame = Frame::new(0,0, 400, 200, "");
 
     //let mut list = ListWidget::new(0, 30, 500, 500, "");
 
@@ -53,7 +53,6 @@ pub fn start_gui(){
     // yend: 25+27, xend: 1+25
     // ybeg: 27, xbeg: 1
     let mut nav_back_btn = button::Button::new(1, 27, 25, 25, "🡠");
-    
 
 
     let mut pathdisp = text::TextDisplay::new(25, 27, 600, 25, "") ;
@@ -77,13 +76,14 @@ pub fn start_gui(){
     let mut extract_path : String = "".to_string();
     let mut global_zip_path : String = "".to_string();
 
-    let widths = &[250, 150, 150, 150, 150];
-    let mut b = browser::MultiBrowser::new(1,55,600, 500, "");
+    let widths = &[250, 150];
+    let mut b = browser::MultiBrowser::new(1,55, 500, 400, "");
 
-    b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
+    b.add("File\tSize");
     b.set_column_char('\t');
     b.set_column_widths(widths);
 
+    b.set_scrollbar_size(20);
 
     // map line to Item
     let mut itemsmap : HashMap<u32, Item> = HashMap::new();
@@ -92,11 +92,11 @@ pub fn start_gui(){
     let mut nav_dirs : Vec<DirEntry> = Vec::new(); // first item is root dir
 
     menubar.add_emit(
-        "&File/New Archive\t",
-        Shortcut::Ctrl | 'n',
+        "&File/New Archive/Zip Archive\t",
+        Shortcut::None,
         menu::MenuFlag::Normal,
         sender,
-        Message::FileCreate
+        Message::FileCreateZip
     );
 
     menubar.add_emit(
@@ -188,7 +188,7 @@ pub fn start_gui(){
                     lc = 2;
 
 
-                    b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
+                    b.add("File\tSize\t");
                     b.set_column_char('\t');
                     b.set_column_widths(widths);
 
@@ -197,7 +197,7 @@ pub fn start_gui(){
 
                         let fico = image::PngImage::load("./icons/folder.png").unwrap();
 
-                        b.insert(lc, format!("{}\t\t\t\t\t", folder.get_name().as_str()).as_str());
+                        b.insert(lc, format!("{}\t-\t", folder.get_name().as_str()).as_str());
                         b.set_icon(lc, Some(fico));
                         
                         itemsmap.insert(lc, Item::Dir(folder));
@@ -205,12 +205,12 @@ pub fn start_gui(){
                     }
 
                     for mut file in prev_dir.files.clone() {
-                        println!("Found a file {} ", file);
+                        println!("Found a file {} ", file.0);
                         //b.add(format!("{}\t\t\t\t\t", file).as_str());
-                        b.insert(lc, format!("{}\t\t\t\t\t", file).as_str());
+                        b.insert(lc, format!("{}\t{}\t", file.0, file.1).as_str());
                         b.set_icon(lc, Some(file_ico.clone()));
 
-                        itemsmap.insert(lc, Item::File(file));
+                        itemsmap.insert(lc, Item::File(file.0));
                         lc+=1;
                     }
 
@@ -268,7 +268,7 @@ pub fn start_gui(){
 
                         let fico = image::PngImage::load("./icons/folder.png").unwrap();
 
-                        b.insert(lc, format!("{}\t\t\t\t\t", folder.get_name().as_str()).as_str());
+                        b.insert(lc, format!("{}\t-\t", folder.get_name().as_str()).as_str());
                         b.set_icon(lc, Some(fico));
                         
                         itemsmap.insert(lc, Item::Dir(folder));
@@ -276,12 +276,12 @@ pub fn start_gui(){
                     }
 
                     for mut file in dirent.files.clone() {
-                        println!("Found a file {} ", file);
+                        println!("Found a file {} ", file.0);
                         //b.add(format!("{}\t\t\t\t\t", file).as_str());
-                        b.insert(lc, format!("{}\t\t\t\t\t", file).as_str());
+                        b.insert(lc, format!("{}\t{}\t", file.0, file.1).as_str());
                         b.set_icon(lc, Some(file_ico.clone()));
 
-                        itemsmap.insert(lc, Item::File(file));
+                        itemsmap.insert(lc, Item::File(file.0));
                         lc+=1;
                     }
                    
@@ -302,17 +302,41 @@ pub fn start_gui(){
 
         if let Some(msg) =  receiver.recv(){
             match msg{
-                Message::FileCreate => {
-                    rzip::file_new_handler();
-                },
-                Message::FileOpen => {
+                Message::FileCreateZip => {
+                    let mut default_file_path = "".to_owned();
+                    let mut drivekey = "HOMEDRIVE";
+                    match env::var(drivekey){
+                        Ok(v) => {
+                            default_file_path.push_str(v.as_str());
+                        },
+                        Err(e) => println!("couldn't interpret {}: {}", drivekey, e),
+                    }
 
-                    let (mut files, mut zipfilepath) = rzip::get_entries();
+                    let mut home_path = "HOMEPATH";
+                    match env::var(home_path){
+                        Ok(val) => default_file_path.push_str(val.as_str()),
+                        Err(e) => println!("couldn't interpret {}: {}", home_path, e),
+                    }
+
+                    default_file_path.push_str("\\Documents\\Unnamed.zip");
+                    let mut zipfilepath = dialog::input(500, 500, "Enter the path to which you would like to extract to ", 
+                                            default_file_path.as_str()).unwrap();
+
+                    let mut fb = dialog::FileDialog::new(dialog::FileDialogType::BrowseMultiFile);
+                    fb.show();
+                    let filepaths = fb.filenames();
+
+                    let zpf = zipfilepath.clone();
+                    rzip::create_new_zip(zipfilepath, filepaths);
+
+
+                    let (mut files, mut zipfilepath) = rzip::get_entries_from_file(PathBuf::from(zpf));
                     global_zip_path = zipfilepath.clone();
                     zipfilepath.push_str("\\");
 
                     let mut split : Vec<&str> = zipfilepath.as_str().split('.').collect();
                     extract_path.push_str(split[0]);
+
 
                     let mut zipbuf = text::TextBuffer::default();
                     path = zipfilepath.as_str().to_string();
@@ -326,17 +350,17 @@ pub fn start_gui(){
                     b.clear();
                     lc = 2;
 
-                    b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
+                    b.add("File\tSize\t");
                     b.set_column_char('\t');
                     b.set_column_widths(widths);
 
 
                     for mut folder in files.dirs {
-                        println!("Found a folder {} ", folder.get_name());
+                        //println!("Found a folder {} ", folder.get_name());
 
                         //b.add(format!("{}\t\t\t\t\t", folder.get_name()).as_str());
                         let fico = image::PngImage::load("./icons/folder.png").unwrap();
-                        b.insert(lc, format!("{}\t\t\t\t\t", folder.get_name().as_str()).as_str());
+                        b.insert(lc, format!("{}\t-\t", folder.get_name().as_str()).as_str());
                         b.set_icon(lc, Some(fico));
 
                         itemsmap.insert(lc, Item::Dir(folder));
@@ -344,12 +368,65 @@ pub fn start_gui(){
                     }
 
                     for mut file in files.files {
-                        println!("Found a file {} ", file);
-                        //b.add(format!("{}\t\t\t\t\t", file).as_str());
-                        b.insert(lc, format!("{}\t\t\t\t\t", file).as_str());
+                        //println!("Found a file {} ", file.0);
+
+                        b.insert(lc, format!("{}\t{}\t", file.0, file.1).as_str());
                         b.set_icon(lc, Some(file_ico.clone()));
 
-                        itemsmap.insert(lc, Item::File(file));
+                        itemsmap.insert(lc, Item::File(file.0));
+                        lc+=1;
+                    }
+
+
+
+
+                },
+                Message::FileOpen => {
+
+                    let (mut files, mut zipfilepath) = rzip::get_entries();
+                    global_zip_path = zipfilepath.clone();
+                    zipfilepath.push_str("\\");
+
+                    let mut split : Vec<&str> = zipfilepath.as_str().split('.').collect();
+                    extract_path.push_str(split[0]);
+
+
+                    let mut zipbuf = text::TextBuffer::default();
+                    path = zipfilepath.as_str().to_string();
+                    zipbuf.set_text(path.as_str());
+
+                    nav_dirs.push(files.clone());
+
+                    pathdisp.set_buffer(zipbuf);
+
+                    // clear lines
+                    b.clear();
+                    lc = 2;
+
+                    b.add("File\tSize\t");
+                    b.set_column_char('\t');
+                    b.set_column_widths(widths);
+
+
+                    for mut folder in files.dirs {
+                        //println!("Found a folder {} ", folder.get_name());
+
+                        //b.add(format!("{}\t\t\t\t\t", folder.get_name()).as_str());
+                        let fico = image::PngImage::load("./icons/folder.png").unwrap();
+                        b.insert(lc, format!("{}\t-\t", folder.get_name().as_str()).as_str());
+                        b.set_icon(lc, Some(fico));
+
+                        itemsmap.insert(lc, Item::Dir(folder));
+                        lc +=1;
+                    }
+
+                    for mut file in files.files {
+                        //println!("Found a file {} ", file.0);
+
+                        b.insert(lc, format!("{}\t{}\t", file.0, file.1).as_str());
+                        b.set_icon(lc, Some(file_ico.clone()));
+
+                        itemsmap.insert(lc, Item::File(file.0));
                         lc+=1;
                     }
 
@@ -360,7 +437,9 @@ pub fn start_gui(){
                     let mut input_path = dialog::input(500, 500, "Enter the path to which you would like to extract to ", default_extract_path.as_str()).unwrap();
 
                     rzip::unzip(global_zip_path.clone(), PathBuf::from(input_path));
+
                     dialog::alert(500, 500, "Extraction successful");
+                    dialog::beep(dialog::BeepType::Default);
 
                 },
                 Message::Exit =>{
