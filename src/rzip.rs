@@ -116,9 +116,9 @@ pub fn unzip(filename : String, dir_path : PathBuf){
 }
 
 
-pub fn get_entries() ->  DirEntry {
-    let mut ret: DirEntry =  DirEntry{cdir: String::from("/"), dirs: Vec::new(), files: Vec::new() };
+pub fn get_entries() ->  (DirEntry, String){
 
+    let mut ret: DirEntry =  DirEntry{cdir: String::from("/"), dirs: Vec::new(), files: Vec::new() };
     let mut browser = dialog::FileDialog::new(dialog::FileDialogType::BrowseFile);
     browser.set_filter("");
     browser.show();
@@ -127,6 +127,9 @@ pub fn get_entries() ->  DirEntry {
 
     let path : std::path::PathBuf = browser.filename();
     println!("Chosen file is: {:?}", path.to_str());
+
+    let mut filepath: String = String::from(path.to_str().unwrap());
+
 
     let mut file = File::open(&path).unwrap();
     let mut zipfile = zip::ZipArchive::new(file).unwrap();
@@ -187,7 +190,7 @@ pub fn get_entries() ->  DirEntry {
     }
 
 
-    ret
+    (ret,filepath)
 }
 
 pub fn file_new_handler(){

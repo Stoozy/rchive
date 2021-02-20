@@ -49,16 +49,13 @@ pub fn start_gui(){
 
     //let mut list = ListWidget::new(0, 30, 500, 500, "");
 
-    let mut nav_back_btn = button::Button::new(1, 27, 20, 20, "🡠");
+    let mut nav_back_btn = button::Button::new(1, 27, 25, 25, "🡠");
     let mut pathbuf = text::TextBuffer::default();
-    let mut pathdisp = text::TextDisplay::new(20, 27, 500, 20, "") ;
-    pathbuf.set_text("Test");
+    let mut pathdisp = text::TextDisplay::new(25, 27, 550, 25, "") ;
+    pathbuf.set_text("");
     pathdisp.set_buffer(Some(pathbuf));
-    pathdisp.scroll(
-        //pathdisp.count_lines(0, pathdisp.buffer().unwrap().length(), false),
-        0,
-        0,
-    );
+    pathdisp.set_frame(FrameType::BorderBox);
+
     let (sender, receiver) = app::channel();
     let mut folder_ico = SharedImage::load("./icons/folder.png").unwrap();
     let mut file_ico = SharedImage::load("./icons/file.png").unwrap();
@@ -74,7 +71,7 @@ pub fn start_gui(){
     //tab.set_top_row(20);
 
     let widths = &[250, 150, 150, 150, 150];
-    let mut b = browser::MultiBrowser::new(1,50,600, 500, "");
+    let mut b = browser::MultiBrowser::new(1,55,600, 500, "");
 
     b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
     b.set_column_char('\t');
@@ -83,7 +80,6 @@ pub fn start_gui(){
 
     // map line to Item
     let mut itemsmap : HashMap<u32, Item> = HashMap::new();
-
 
     menubar.add_emit(
         "&File/New Archive\t",
@@ -223,8 +219,12 @@ pub fn start_gui(){
                     rzip::file_new_handler();
                 },
                 Message::FileOpen => {
-                    let mut files = rzip::get_entries();
+                    let (mut files, mut zipfilepath) = rzip::get_entries();
+                    //pathbuf.set_text(zipfilepath.as_str());
+                    let mut zipbuf = text::TextBuffer::default();
+                    zipbuf.set_text(zipfilepath.as_str());
 
+                    pathdisp.set_buffer(zipbuf);
                     // clear lines
                     b.clear();
                     lc = 2;
