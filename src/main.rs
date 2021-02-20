@@ -15,8 +15,6 @@ use rzip::DirEntry;
 
 
 
-
-
 #[derive(Copy, Clone)]
 pub enum Message{
     FileCreate,
@@ -76,6 +74,8 @@ pub fn start_gui(){
     //tab.set_top_row(20);
 
     let mut path : String = "".to_string();
+    let mut extract_path : String = "".to_string();
+    let mut global_zip_path : String = "".to_string();
 
     let widths = &[250, 150, 150, 150, 150];
     let mut b = browser::MultiBrowser::new(1,55,600, 500, "");
@@ -308,7 +308,11 @@ pub fn start_gui(){
                 Message::FileOpen => {
 
                     let (mut files, mut zipfilepath) = rzip::get_entries();
+                    global_zip_path = zipfilepath.clone();
                     zipfilepath.push_str("\\");
+
+                    let mut split : Vec<&str> = zipfilepath.as_str().split('.').collect();
+                    extract_path.push_str(split[0]);
 
                     let mut zipbuf = text::TextBuffer::default();
                     path = zipfilepath.as_str().to_string();
@@ -348,11 +352,16 @@ pub fn start_gui(){
                         itemsmap.insert(lc, Item::File(file));
                         lc+=1;
                     }
-                    
+
 
                 },
                 Message::ExtractAll => {
-                    println!("Extract all clicked!");
+                    let mut default_extract_path = extract_path.clone();
+                    let mut input_path = dialog::input(500, 500, "Enter the path to which you would like to extract to ", default_extract_path.as_str()).unwrap();
+
+                    rzip::unzip(global_zip_path.clone(), PathBuf::from(input_path));
+                    dialog::alert(500, 500, "Extraction successful");
+
                 },
                 Message::Exit =>{
                     app.quit();
