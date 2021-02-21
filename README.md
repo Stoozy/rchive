@@ -1,7 +1,9 @@
 <img src="icons/rzip.png" alt="" width="100" height="100"/>
 
 # rzip
+![](https://img.shields.io/github/workflow/status/Stoozy/rzip/Rust/main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/fe9d3126c4a04f179f823fb658b1e8e1)](https://www.codacy.com/gh/Stoozy/rzip/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Stoozy/rzip&amp;utm_campaign=Badge_Grade)
 
 Open Source zip file manager written in rust for windows.
 
@@ -24,7 +26,6 @@ Open Source zip file manager written in rust for windows.
   - [ ] bzip types
   - [ ] gzip 
   - [ ] tar 
-
 - [ ] Create an ui window for create new option
 - [ ] Improve navigation bar (resize is broken)
 
