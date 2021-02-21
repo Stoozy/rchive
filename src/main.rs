@@ -82,7 +82,7 @@ pub fn start_gui(){
     b.add("File\tSize");
     b.set_column_char('\t');
     b.set_column_widths(widths);
-
+    b.set_frame(FrameType::FlatBox);
     b.set_scrollbar_size(20);
 
     // map line to Item
@@ -259,7 +259,7 @@ pub fn start_gui(){
 
 
 
-                    b.add("File\tSize\tLast Changed\tCreated\tAccessed\t");
+                    b.add("File\tSize\t");
                     b.set_column_char('\t');
                     b.set_column_widths(widths);
 
@@ -318,10 +318,10 @@ pub fn start_gui(){
                         Err(e) => println!("couldn't interpret {}: {}", home_path, e),
                     }
 
-                    default_file_path.push_str("\\Documents\\Unnamed.zip");
+                    default_file_path.push_str("\\Documents\\Archive.zip");
                     let mut zipfilepath = dialog::input(500, 500, "Enter the path to which you would like to extract to ", 
                                             default_file_path.as_str()).unwrap();
-
+                   
                     let mut fb = dialog::FileDialog::new(dialog::FileDialogType::BrowseMultiFile);
                     fb.show();
                     let filepaths = fb.filenames();

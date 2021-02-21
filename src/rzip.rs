@@ -1,3 +1,7 @@
+use unrar::Archive;
+use unrar::error::{Code, When, UnrarError};
+
+use std::io::stderr;
 use std::fs::File;
 use std::fs;
 use std::io::Write;
@@ -159,72 +163,63 @@ pub fn get_entries() ->  (DirEntry, String){
     let path : std::path::PathBuf = browser.filename();
     println!("Chosen file is: {:?}", path.to_str());
 
-    let mut filepath: String = String::from(path.to_str().unwrap());
+    let ext = path.extension().unwrap().to_str().unwrap();
 
+    match ext {
+       "zip"  =>{
+            println!("Opened a zip file");
+            let mut filepath: String = String::from(path.to_str().unwrap());
 
-    let mut file = File::open(&path).unwrap();
-    let mut zipfile = zip::ZipArchive::new(file).unwrap();
+            let mut file = File::open(&path).unwrap();
+            let mut zipfile = zip::ZipArchive::new(file).unwrap();
 
-    //let mut files = zipfile.file_names();
+            return list_zip(zipfile, filepath);
 
+       },
+       "rar" => {
 
-    // add dir if not found
-    // continue until parent dir of file is found
-    // add file to parent dirs files
-    // repeat for every file
+            let mut filepath: String = String::from(path.to_str().unwrap());
+            let mut rarfile = unrar::archive::Archive::new(path.to_str().unwrap().to_string());
+            match rarfile.list_split() {
+                Ok(archive) => return list_rar(archive, filepath),
 
-    for i in 0..zipfile.len() {
-        let file = zipfile.by_index(i).unwrap();
-
-        // has folders
-        let mut cur_dir: & mut DirEntry = & mut ret;
-
-
-        let mut path = PathBuf::from(file.name());
-        //println!("Got file path {}", file);
-
-        let mut components = path.components();
-        let mut comp_vec: Vec<String> = Vec::new();
-
-        for comp in components {
-            //println!("{} ", comp.as_os_str().to_str().unwrap());
-            comp_vec.push(String::from(comp.as_os_str().to_str().unwrap()));
-        } 
-
-        if comp_vec.len() > 1 {
-            for i in 0..comp_vec.len() {
-                if i == comp_vec.len()-1 {
-                    // is file 
-                    (*cur_dir).add_file(comp_vec[i].clone(), file.size());
-                    //println!("Added file {} to {}", comp_vec[i].clone(), cur_dir.get_name());
-                }else{
-                    let mut folder_name = String::from(comp_vec[i].clone());
-
-                    if !cur_dir.contains_dir(String::from(comp_vec[i].clone())) {
-                        let mut new_dir = DirEntry{cdir: folder_name, dirs: Vec::new(), files: Vec::new()};
-                        let mut i : usize = (*cur_dir).add_dir(new_dir.clone());
-
-                        cur_dir = & mut cur_dir.dirs[i];
-                    }
-                    if cur_dir.dirs.len() != 0 {
-                        let mut i : usize = (*cur_dir).find_child_dir(String::from(comp_vec[i].clone()));
-                        cur_dir = & mut cur_dir.dirs[i];
-                    }
-
+                // If the error's data field holds an OpenArchive, an error occurred while opening,
+                // the archive is partly broken (e.g. broken header), but is still readable from.
+                // In this example, we are still going to use the archive and list its contents.
+                Err(error @ UnrarError { data: Some(_), .. }) => {
+                    //writeln!(&mut stderr, "Error: {}, continuing.", error).unwrap();
+                    list_rar(error.data.unwrap(), filepath);
                 }
-                
+                // Irrecoverable failure, do nothing.
+                Err(e) => {
+                    println!("Error occured: {}", e);
+                    //writeln!(&mut stderr, "Error: {}", e).unwrap();
+                }
 
             }
-            cur_dir = & mut ret;
-        }else{
-            cur_dir = & mut ret;
-            (*cur_dir).add_file(file.name().to_string(), file.size());
-        }
-    }
 
 
-    (ret,filepath)
+            println!("Opened a rar file");
+       },
+       "bzip2" => {
+            println!("Opened a bzip file")
+       },
+       "bz2" => {
+
+            println!("Opened a bzip file")
+       },
+       _ => {
+            println!("Opened  a random file");
+            dialog::alert(550, 300, "Cannot open this filetype");
+            // return garbage 
+            return (DirEntry{cdir: ".".to_string(), dirs: Vec::new(), files: Vec::new()}, "".to_string());
+       }
+    };
+
+    // return garbage
+    return (DirEntry{cdir: ".".to_string(), dirs: Vec::new(), files: Vec::new()}, "".to_string());
 }
+
 
 pub fn get_entries_from_file(path: PathBuf) ->  (DirEntry, String){
 
@@ -245,7 +240,6 @@ pub fn get_entries_from_file(path: PathBuf) ->  (DirEntry, String){
     // continue until parent dir of file is found
     // add file to parent dirs files
     // repeat for every file
-
     for i in 0..zipfile.len() {
         let file = zipfile.by_index(i).unwrap();
 
@@ -285,7 +279,125 @@ pub fn get_entries_from_file(path: PathBuf) ->  (DirEntry, String){
                     }
 
                 }
-                
+
+            }
+            cur_dir = & mut ret;
+        }else{
+            cur_dir = & mut ret;
+            (*cur_dir).add_file(file.name().to_string(), file.size());
+        }
+    }
+
+    (ret,filepath)
+}
+
+
+pub fn list_rar(archive : unrar::archive::OpenArchive, filepath : String) -> (DirEntry, String) {
+    let mut ret: DirEntry =  DirEntry{cdir: String::from("/"), dirs: Vec::new(), files: Vec::new() };
+    let mut stderr = std::io::stderr();
+
+    // need two entries
+    // one for adding all folders
+    // one for adding all files
+    for entry in archive {
+        match entry{
+            Ok(file) => {
+
+                let mut cur_dir: & mut DirEntry = & mut ret;
+                let mut pathb = PathBuf::from(file.to_string());
+                let mut components = pathb.components();
+                let mut comp_vec = Vec::new();
+                for comp in components {
+                    //println!("{} ", comp.as_os_str().to_str().unwrap());
+                    comp_vec.push(String::from(comp.as_os_str().to_str().unwrap()));
+                } 
+
+
+                if file.is_file() {
+                    if comp_vec.len() > 1 {
+                        for i in 0..comp_vec.len() {
+                            if i == comp_vec.len()-1 {
+                                // is file 
+                                (*cur_dir).add_file(comp_vec[i].clone(), file.unpacked_size as u64);
+                                //println!("Added file {} to {}", comp_vec[i].clone(), cur_dir.get_name());
+                            }else{
+                                let mut folder_name = String::from(comp_vec[i].clone());
+
+                                if !cur_dir.contains_dir(String::from(comp_vec[i].clone())) {
+                                    let mut new_dir = DirEntry{cdir: folder_name, dirs: Vec::new(), files: Vec::new()};
+                                    let mut i : usize = (*cur_dir).add_dir(new_dir.clone());
+
+                                    cur_dir = & mut cur_dir.dirs[i];
+                                }
+                                if cur_dir.dirs.len() != 0 {
+                                    let mut i : usize = (*cur_dir).find_child_dir(String::from(comp_vec[i].clone()));
+                                    cur_dir = & mut cur_dir.dirs[i];
+                                }
+
+                            }
+
+                        }
+                        cur_dir = & mut ret;
+                    }else{
+                        cur_dir = & mut ret;
+                        (*cur_dir).add_file(file.filename, file.unpacked_size as u64);
+                    }
+                }
+                //println!("File : {} Is File: {} Is Dir: {}", e.filename, e.is_file(), e.is_directory());
+            },
+            Err(err) => writeln!(&mut stderr, "Error: {}", err).unwrap(),
+        }
+    }
+
+
+    (ret, filepath)
+}
+
+pub fn list_zip(mut zipfile : zip::ZipArchive<std::fs::File>, filepath : String) -> (DirEntry, String){
+
+    let mut ret: DirEntry =  DirEntry{cdir: String::from("/"), dirs: Vec::new(), files: Vec::new() };
+    // add dir if not found
+    // continue until parent dir of file is found
+    // add file to parent dirs files
+    // repeat for every file
+    for i in 0..zipfile.len() {
+        let file = zipfile.by_index(i).unwrap();
+
+        // has folders
+        let mut cur_dir: & mut DirEntry = & mut ret;
+
+
+        let mut path = PathBuf::from(file.name());
+        //println!("Got file path {}", file);
+
+        let mut components = path.components();
+        let mut comp_vec: Vec<String> = Vec::new();
+
+        for comp in components {
+            //println!("{} ", comp.as_os_str().to_str().unwrap());
+            comp_vec.push(String::from(comp.as_os_str().to_str().unwrap()));
+        } 
+
+        if comp_vec.len() > 1 {
+            for i in 0..comp_vec.len() {
+                if i == comp_vec.len()-1 {
+                    // is file 
+                    (*cur_dir).add_file(comp_vec[i].clone(), file.size());
+                    //println!("Added file {} to {}", comp_vec[i].clone(), cur_dir.get_name());
+                }else{
+                    let mut folder_name = String::from(comp_vec[i].clone());
+
+                    if !cur_dir.contains_dir(String::from(comp_vec[i].clone())) {
+                        let mut new_dir = DirEntry{cdir: folder_name, dirs: Vec::new(), files: Vec::new()};
+                        let mut i : usize = (*cur_dir).add_dir(new_dir.clone());
+
+                        cur_dir = & mut cur_dir.dirs[i];
+                    }
+                    if cur_dir.dirs.len() != 0 {
+                        let mut i : usize = (*cur_dir).find_child_dir(String::from(comp_vec[i].clone()));
+                        cur_dir = & mut cur_dir.dirs[i];
+                    }
+                }
 
             }
             cur_dir = & mut ret;
@@ -296,17 +408,5 @@ pub fn get_entries_from_file(path: PathBuf) ->  (DirEntry, String){
     }
 
 
-    (ret,filepath)
+    return (ret,filepath);
 }
-
-
-
-pub fn has_dir(s : String) -> bool {
-    for c in s.chars(){
-        if c == '/' {
-            return true;
-        }
-    }
-    return false;
-}
-
