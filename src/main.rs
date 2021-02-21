@@ -14,6 +14,16 @@ use std::ops::{Deref, DerefMut};
 use rzip::DirEntry;
 
 
+#[derive(Copy, Clone)]
+pub enum FileType{
+    None,
+    Zip,
+    Rar,
+    Lz,
+    Gzip,
+    Bzip,
+    Tar
+}
 
 #[derive(Copy, Clone)]
 pub enum Message{
@@ -62,19 +72,11 @@ pub fn start_gui(){
     let mut folder_ico = SharedImage::load("./icons/folder.png").unwrap();
     let mut file_ico = SharedImage::load("./icons/file.png").unwrap();
 
-
-    //let mut tab = table::Table::new(0,50,600, 500, "");
-    //tab.set_table_frame(FrameType::BorderBox);
-    //tab.set_col_header(true);
-    //tab.set_col_header_height(20);
-    //tab.set_cols(5);
-    //tab.set_rows(5);
-    //tab.set_col_width_all(200);
-    //tab.set_top_row(20);
-
+    // globals
     let mut path : String = "".to_string();
     let mut extract_path : String = "".to_string();
-    let mut global_zip_path : String = "".to_string();
+    let mut global_filepath: String = "".to_string();
+    let mut current_filetype : FileType = FileType::None;
 
     let widths = &[250, 150];
     let mut b = browser::MultiBrowser::new(1,55, 500, 400, "");
@@ -331,7 +333,7 @@ pub fn start_gui(){
 
 
                     let (mut files, mut zipfilepath) = rzip::get_entries_from_file(PathBuf::from(zpf));
-                    global_zip_path = zipfilepath.clone();
+                    global_filepath = zipfilepath.clone();
                     zipfilepath.push_str("\\");
 
                     let mut split : Vec<&str> = zipfilepath.as_str().split('.').collect();
@@ -382,17 +384,48 @@ pub fn start_gui(){
 
                 },
                 Message::FileOpen => {
+                    let (mut files, mut filepath) = rzip::get_entries();
+                    global_filepath = filepath.clone();
+                    let mut pbuf = PathBuf::from(filepath.clone());
+                    let mut ext = pbuf 
+                        .as_path()
+                        .extension()
+                        .unwrap()
+                        .to_str()
+                        .unwrap();
 
-                    let (mut files, mut zipfilepath) = rzip::get_entries();
-                    global_zip_path = zipfilepath.clone();
-                    zipfilepath.push_str("\\");
+                    match ext {
+                        "zip" => {
+                            current_filetype = FileType::Zip;
+                        },
+                        "bzip2" => {
+                            current_filetype = FileType::Bzip;
+                        },
+                        "rar" => {
+                            current_filetype = FileType::Rar;
+                        },
+                        "7z" => {
+                            current_filetype = FileType::Lz;
+                        },
+                        "gz" => {
+                            current_filetype = FileType::Gzip;
+                        },
+                        "tar" => {
+                            current_filetype = FileType::Tar;
+                        },
+                        _ => {
+                            current_filetype = FileType::None;
+                        }
+                    }
 
-                    let mut split : Vec<&str> = zipfilepath.as_str().split('.').collect();
+                    filepath.push_str("\\");
+
+                    let mut split : Vec<&str> = filepath.as_str().split('.').collect();
                     extract_path.push_str(split[0]);
 
 
                     let mut zipbuf = text::TextBuffer::default();
-                    path = zipfilepath.as_str().to_string();
+                    path = filepath.as_str().to_string();
                     zipbuf.set_text(path.as_str());
 
                     nav_dirs.push(files.clone());
@@ -433,14 +466,45 @@ pub fn start_gui(){
 
                 },
                 Message::ExtractAll => {
-                    let mut default_extract_path = extract_path.clone();
-                    let mut input_path = dialog::input(500, 500, "Enter the path to which you would like to extract to ", default_extract_path.as_str()).unwrap();
 
-                    rzip::unzip(global_zip_path.clone(), PathBuf::from(input_path));
+                    match current_filetype {
+                        FileType::Zip => {
+                            println!("Trying to extract a zip file");
+                            let mut default_extract_path = extract_path.clone();
+                            let mut input_path = dialog::input(500, 500, "Enter the path to which you would like to extract to ", default_extract_path.as_str()).unwrap();
 
-                    dialog::alert(500, 500, "Extraction successful");
-                    dialog::beep(dialog::BeepType::Default);
+                            rzip::unzip(global_filepath.clone(), PathBuf::from(input_path));
 
+                            dialog::alert(500, 500, "Extraction successful");
+                            dialog::beep(dialog::BeepType::Default);
+                        },
+                        FileType::Rar => {
+                            let mut default_extract_path = extract_path.clone();
+                            let mut input_path = dialog::input(500, 500, "Enter the path to which you would like to extract to ", default_extract_path.as_str()).unwrap();
+
+                            rzip::unrar(global_filepath.clone(), PathBuf::from(input_path));
+
+                            dialog::alert(500, 500, "Extraction successful");
+                            dialog::beep(dialog::BeepType::Default);
+
+                            println!("Trying to extract a rar file");
+                        },
+                        FileType::Bzip => {
+                            println!("Trying to extract a bzip file");
+                        },
+                        FileType::Lz => {
+                            println!("Trying to extract a 7z file");
+                        }, 
+                        FileType::Gzip => {
+                            println!("Trying to extract a gzip file");
+                        },
+                        FileType::Tar => {
+                            println!("Trying to extract a tar file");
+                        },
+                        FileType::None => {
+                            dialog::alert(500, 500, "You must have a supported file open");
+                        }
+                    }
                 },
                 Message::Exit =>{
                     app.quit();

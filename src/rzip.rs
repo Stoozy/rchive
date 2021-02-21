@@ -150,6 +150,15 @@ pub fn unzip(filename : String, dir_path : PathBuf){
     zip.extract(dir_path).unwrap();
 }
 
+pub fn unrar(filename: String, dir_path : PathBuf) {
+    unrar::archive::Archive::new(filename)
+        .extract_to(dir_path.display().to_string())
+        .unwrap()
+        .process()
+        .unwrap();
+    println!("Extracted rar archive");
+}
+
 
 pub fn get_entries() ->  (DirEntry, String){
 
