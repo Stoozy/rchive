@@ -6,10 +6,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
-//pub enum DirEntry {
-//    Dir(Vec<DirEntry>),
-//    Files(Vec<PathBuf>)
-//}
 
 #[derive(Debug, Clone)]
 pub struct DirEntry {
@@ -157,12 +153,10 @@ pub fn unrar(filename: String, dir_path: PathBuf) {
         }
 }
 
-pub fn get_entries() -> (DirEntry, String) {
+pub fn get_entries() -> Option<(DirEntry, String)> {
     let mut browser = dialog::FileDialog::new(dialog::FileDialogType::BrowseFile);
     browser.set_filter("");
     browser.show();
-
-    // TODO: check file ext for compatibility (.zip only for now)
 
     let path: std::path::PathBuf = browser.filename();
     info!("Chosen file is: {:?}", path.to_str());
@@ -177,13 +171,13 @@ pub fn get_entries() -> (DirEntry, String) {
             let file = File::open(&path).unwrap();
             let zipfile = zip::ZipArchive::new(file).unwrap();
 
-            return list_zip(zipfile, filepath);
+            return Some(list_zip(zipfile, filepath));
         }
         "rar" => {
             let filepath: String = String::from(path.to_str().unwrap());
             let rarfile = unrar::archive::Archive::new(path.to_str().unwrap().to_string());
             match rarfile.list_split() {
-                Ok(archive) => return list_rar(archive, filepath),
+                Ok(archive) => return Some(list_rar(archive, filepath)),
 
                 // If the error's data field holds an OpenArchive, an error occurred while opening,
                 // the archive is partly broken (e.g. broken header), but is still readable from.
@@ -210,27 +204,11 @@ pub fn get_entries() -> (DirEntry, String) {
         _ => {
             info!("Opened  a random file");
             dialog::alert(550, 300, "Cannot open this filetype");
-            // return garbage
-            return (
-                DirEntry {
-                    cdir: ".".to_string(),
-                    dirs: Vec::new(),
-                    files: Vec::new(),
-                },
-                "".to_string(),
-            );
+            return None;
         }
     };
 
-    // return garbage
-    return (
-        DirEntry {
-            cdir: ".".to_string(),
-            dirs: Vec::new(),
-            files: Vec::new(),
-        },
-        "".to_string(),
-    );
+    return None; 
 }
 
 pub fn get_entries_from_file(path: PathBuf) -> (DirEntry, String) {

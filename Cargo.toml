@@ -1,5 +1,5 @@
 [package]
-name = "rzip"
+name = "rchive"
 version = "0.1.0"
 authors = ["Stoozy <mahinsemail@gmail.com>"]
 edition = "2018"

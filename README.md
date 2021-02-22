@@ -1,19 +1,21 @@
 <img src="icons/rzip.png" alt="" width="100" height="100"/>
 
-# rzip
+# rchive 
 ![](https://img.shields.io/github/workflow/status/Stoozy/rzip/Rust/main)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/fe9d3126c4a04f179f823fb658b1e8e1)](https://www.codacy.com/gh/Stoozy/rzip/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Stoozy/rzip&amp;utm_campaign=Badge_Grade)
 
 Open Source compression file manager written in rust for windows.
 
-### Installation (Build from source)
-1. Clone this directory
-2. Cd into the directory: `cd rzip`
-3. Build with cargo: `cargo build`
+## Installation (Build from source)
+ 1. Clone this directory
+ 2. Cd into the directory: `cd rchive`
+ 3. Build with cargo: `cargo build`
   
 
-### TODO
+## TODO
 - [ ] Get list for the following types:
   - [x] rar
   - [x] zip
@@ -29,8 +31,8 @@ Open Source compression file manager written in rust for windows.
 - [ ] Create an ui window for create new option
 - [ ] Improve navigation bar (resize is broken)
 
-### License
-```
+## License
+
 MIT License
 
 Copyright (c) 2021 Stoozy
@@ -52,4 +54,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```

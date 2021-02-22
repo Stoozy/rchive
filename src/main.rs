@@ -6,8 +6,8 @@ use std::io::{self};
 
 use std::path::PathBuf;
 use std::{thread, time};
-mod rzip;
-use rzip::DirEntry;
+mod internal;
+use internal::DirEntry;
 
 #[macro_use]
 extern crate log;
@@ -60,8 +60,8 @@ impl Gui {
         app::set_scheme(app::Scheme::Base);
         app::set_frame_type(FrameType::BorderBox);
 
-        let mut win = Window::new(500, 200, 600, 500, "rzip");
-        let mut menubar = menu::SysMenuBar::new(0, 0, 600, 25, "");
+        let mut win = Window::new(500, 200, 600, 500, "Rchive");
+        let menubar = menu::SysMenuBar::new(0, 0, 600, 25, "");
 
         let mut pathdisp = text::TextDisplay::new(25, 27, 600, 25, "");
         pathdisp.set_frame(FrameType::BorderBox);
@@ -142,7 +142,7 @@ impl Gui {
         );
 
         self.menubar.add_emit(
-            "&Edit/Select all \t",
+            "&Edit/Add file \t",
             Shortcut::None,
             menu::MenuFlag::Normal,
             self.sender,
@@ -348,10 +348,10 @@ impl Gui {
                         let filepaths = fb.filenames();
 
                         let zpf = zipfilepath.clone();
-                        rzip::create_new_zip(zipfilepath, filepaths);
+                        internal::create_new_zip(zipfilepath, filepaths);
 
                         let (files, mut zipfilepath) =
-                            rzip::get_entries_from_file(PathBuf::from(zpf));
+                            internal::get_entries_from_file(PathBuf::from(zpf));
                         global_filepath = zipfilepath.clone();
                         zipfilepath.push_str("\\");
 
@@ -401,7 +401,12 @@ impl Gui {
                         }
                     }
                     Message::FileOpen => {
-                        let (files, mut filepath) = rzip::get_entries();
+                        
+                        let (files, mut filepath) = match internal::get_entries(){
+                            Some((f, fp)) => (f, fp),
+                            None => panic!("Issue getting entries for file"),
+                        };
+
                         global_filepath = filepath.clone();
                         let pbuf = PathBuf::from(filepath.clone());
                         let ext = pbuf.as_path().extension().unwrap().to_str().unwrap();
@@ -490,7 +495,7 @@ impl Gui {
                             )
                             .unwrap();
 
-                            rzip::unzip(global_filepath.clone(), PathBuf::from(input_path));
+                            internal::unzip(global_filepath.clone(), PathBuf::from(input_path));
 
                             dialog::alert(500, 500, "Extraction successful");
                             dialog::beep(dialog::BeepType::Default);
@@ -507,7 +512,7 @@ impl Gui {
                             )
                             .unwrap();
 
-                            rzip::unrar(global_filepath.clone(), PathBuf::from(input_path));
+                            internal::unrar(global_filepath.clone(), PathBuf::from(input_path));
 
                             dialog::alert(500, 500, "Extraction successful");
                             dialog::beep(dialog::BeepType::Default);
@@ -637,14 +642,14 @@ pub fn main() {
                     }
                 }
 
-                rzip::zip_files(filename, filepaths, files);
+                internal::zip_files(filename, filepaths, files);
             } else if inp == 'b' {
                 println!("Please enter the path of the zip file: ");
                 let zippath = PathBuf::from(get_string_input());
                 let extract_dir = zippath.file_stem().unwrap();
                 println!("File will be extracted to {:?}", extract_dir);
 
-                rzip::unzip(
+                internal::unzip(
                     zippath.as_path().display().to_string(),
                     PathBuf::from(extract_dir),
                 );

@@ -414,6 +414,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rchive"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "fltk",
+ "log",
+ "lzma",
+ "unrar",
+ "winres",
+ "zip",
+]
+
+[[package]]
 name = "rdrand"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -445,19 +458,6 @@ name = "rustc-serialize"
 version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
-
-[[package]]
-name = "rzip"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "fltk",
- "log",
- "lzma",
- "unrar",
- "winres",
- "zip",
-]
 
 [[package]]
 name = "serde"
