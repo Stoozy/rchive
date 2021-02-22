@@ -84,7 +84,6 @@ impl Gui {
         b.set_frame(FrameType::FlatBox);
         //b.set_scrollbar_size(20);
         b.show();
-
         win.end();
         win.make_resizable(true);
         win.show();
@@ -175,9 +174,9 @@ impl Gui {
                 if (app::event_x() < 26 && app::event_x() > 1)
                     && (app::event_y() < 52 && app::event_y() > 27)
                 {
-                    println!("Clicked on back button!");
+                    debug!("Clicked on back button!");
 
-                    println!("Length of nav_dirs is {}", self.nav_dirs.len());
+                    debug!("Length of nav_dirs is {}", self.nav_dirs.len());
 
                     if self.nav_dirs.len() != 1 {
                         let last = self.nav_dirs.len() - 2;
@@ -208,7 +207,7 @@ impl Gui {
                         self.b.set_column_widths(widths);
 
                         for folder in prev_dir.dirs.clone() {
-                            println!("Found a folder {} ", folder.get_name());
+                            info!("Found a folder {} ", folder.get_name());
 
                             let fico = image::PngImage::load("./icons/folder.png").unwrap();
 
@@ -223,7 +222,7 @@ impl Gui {
                         }
 
                         for file in prev_dir.files.clone() {
-                            println!("Found a file {} ", file.0);
+                            info!("Found a file {} ", file.0);
                             //b.add(format!("{}\t\t\t\t\t", file).as_str());
                             self.b
                                 .insert(lc, format!("{}\t{}\t", file.0, file.1).as_str());
@@ -279,7 +278,7 @@ impl Gui {
                             self.b.set_column_widths(widths);
 
                             for folder in dirent.dirs.clone() {
-                                println!("Found a folder {} ", folder.get_name());
+                                info!("Found a folder {} ", folder.get_name());
 
                                 let fico = image::PngImage::load("./icons/folder.png").unwrap();
 
@@ -294,7 +293,7 @@ impl Gui {
                             }
 
                             for file in dirent.files.clone() {
-                                println!("Found a file {} ", file.0);
+                                info!("Found a file {} ", file.0);
                                 //b.add(format!("{}\t\t\t\t\t", file).as_str());
                                 self.b
                                     .insert(lc, format!("{}\t{}\t", file.0, file.1).as_str());
@@ -304,10 +303,10 @@ impl Gui {
                                 lc += 1;
                             }
 
-                            println!("Clicked on folder {}", dirent.get_name());
+                            debug!("Clicked on folder {}", dirent.get_name());
                         }
                         Item::File(name) => {
-                            println!("Clicked on file {}", name);
+                            debug!("Clicked on file {}", name);
                         }
                     }
                 }
@@ -325,13 +324,13 @@ impl Gui {
                             Ok(v) => {
                                 default_file_path.push_str(v.as_str());
                             }
-                            Err(e) => println!("couldn't interpret {}: {}", drivekey, e),
+                            Err(e) => error!("couldn't interpret {}: {}", drivekey, e),
                         }
 
                         let home_path = "HOMEPATH";
                         match env::var(home_path) {
                             Ok(val) => default_file_path.push_str(val.as_str()),
-                            Err(e) => println!("couldn't interpret {}: {}", home_path, e),
+                            Err(e) => error!("couldn't interpret {}: {}", home_path, e),
                         }
 
                         default_file_path.push_str("\\Documents\\Archive.zip");
@@ -391,7 +390,7 @@ impl Gui {
                         }
 
                         for file in files.files {
-                            //println!("Found a file {} ", file.0);
+                            info!("Found a file {}", file.0);
 
                             self.b
                                 .insert(lc, format!("{}\t{}\t", file.0, file.1).as_str());
@@ -453,7 +452,7 @@ impl Gui {
                         self.b.set_column_widths(widths);
 
                         for folder in files.dirs {
-                            //println!("Found a folder {} ", folder.get_name());
+                            info!("Found a folder {} ", folder.get_name());
 
                             //b.add(format!("{}\t\t\t\t\t", folder.get_name()).as_str());
                             let fico = image::PngImage::load("./icons/folder.png")
@@ -469,7 +468,7 @@ impl Gui {
                         }
 
                         for file in files.files {
-                            //println!("Found a file {} ", file.0);
+                            info!("Found a file {} ", file.0);
 
                             self.b
                                 .insert(lc, format!("{}\t{}\t", file.0, file.1).as_str());
@@ -481,7 +480,7 @@ impl Gui {
                     }
                     Message::ExtractAll => match current_filetype {
                         FileType::Zip => {
-                            println!("Trying to extract a zip file");
+                            info!("Trying to extract a zip file");
                             let default_extract_path = extract_path.clone();
                             let input_path = dialog::input(
                                 500,
@@ -497,6 +496,8 @@ impl Gui {
                             dialog::beep(dialog::BeepType::Default);
                         }
                         FileType::Rar => {
+
+                            info!("Trying to extract a rar file");
                             let default_extract_path = extract_path.clone();
                             let input_path = dialog::input(
                                 500,
@@ -511,19 +512,18 @@ impl Gui {
                             dialog::alert(500, 500, "Extraction successful");
                             dialog::beep(dialog::BeepType::Default);
 
-                            println!("Trying to extract a rar file");
                         }
                         FileType::Bzip => {
-                            println!("Trying to extract a bzip file");
+                            info!("Trying to extract a bzip file");
                         }
                         FileType::Lz => {
-                            println!("Trying to extract a 7z file");
+                            info!("Trying to extract a 7z file");
                         }
                         FileType::Gzip => {
-                            println!("Trying to extract a gzip file");
+                            info!("Trying to extract a gzip file");
                         }
                         FileType::Tar => {
-                            println!("Trying to extract a tar file");
+                            info!("Trying to extract a tar file");
                         }
                         FileType::None => {
                             dialog::alert(500, 500, "You must have a supported file open");
@@ -554,7 +554,7 @@ pub fn get_char() -> char {
     let stdin = io::stdin();
 
     match stdin.read_line(&mut buf) {
-        Err(e) => println!("Error occured: {}", e),
+        Err(e) => error!("Error occured: {}", e),
         Ok(n) => {
             if n != 0 {
                 return buf.as_bytes()[0] as char;
@@ -573,7 +573,7 @@ pub fn get_string_input() -> String {
     let stdin = io::stdin();
 
     match stdin.read_line(&mut buf) {
-        Err(e) => println!("Error occured: {}", e),
+        Err(e) => error!("Error occured: {}", e),
         Ok(_) => {
             buf.pop();
             buf.pop();

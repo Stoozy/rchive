@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/fe9d3126c4a04f179f823fb658b1e8e1)](https://www.codacy.com/gh/Stoozy/rzip/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Stoozy/rzip&amp;utm_campaign=Badge_Grade)
 
-Open Source zip file manager written in rust for windows.
+Open Source compression file manager written in rust for windows.
 
 ### Installation (Build from source)
 1. Clone this directory

@@ -133,23 +133,28 @@ pub fn zip_files(mut file: String, filepaths: Vec<String>, files: Vec<String>) -
 
     zip.finish().unwrap();
 
-    println!("Successfully created zip file!");
+    info!("Successfully created zip file!");
 }
 
 pub fn unzip(filename: String, dir_path: PathBuf) {
     let zipfile = get_file_from_path(filename);
     let mut zip = zip::ZipArchive::new(zipfile).unwrap();
 
-    zip.extract(dir_path).unwrap();
+    match zip.extract(dir_path){
+        Ok(_) => debug!("Extraction sucessful"),
+        Err(e) => error!("Error occured: {}", e),
+    };
 }
 
 pub fn unrar(filename: String, dir_path: PathBuf) {
-    unrar::archive::Archive::new(filename)
+    match unrar::archive::Archive::new(filename)
         .extract_to(dir_path.display().to_string())
         .unwrap()
         .process()
-        .unwrap();
-    println!("Extracted rar archive");
+        {
+            Ok(_) =>  info!("Extracted rar archive"),
+            Err(e) => error!("{}", e),
+        }
 }
 
 pub fn get_entries() -> (DirEntry, String) {
@@ -160,13 +165,13 @@ pub fn get_entries() -> (DirEntry, String) {
     // TODO: check file ext for compatibility (.zip only for now)
 
     let path: std::path::PathBuf = browser.filename();
-    println!("Chosen file is: {:?}", path.to_str());
+    info!("Chosen file is: {:?}", path.to_str());
 
     let ext = path.extension().unwrap().to_str().unwrap();
 
     match ext {
         "zip" => {
-            println!("Opened a zip file");
+            info!("Opened a zip file");
             let filepath: String = String::from(path.to_str().unwrap());
 
             let file = File::open(&path).unwrap();
@@ -189,21 +194,21 @@ pub fn get_entries() -> (DirEntry, String) {
                 }
                 // Irrecoverable failure, do nothing.
                 Err(e) => {
-                    println!("Error occured: {}", e);
+                    error!("Error occured: {}", e);
                     //writeln!(&mut stderr, "Error: {}", e).unwrap();
                 }
             }
 
-            println!("Opened a rar file");
+            info!("Opened a rar file");
         }
         "bzip2" => {
-            println!("Opened a bzip file")
+            info!("Opened a bzip file")
         }
         "bz2" => {
-            println!("Opened a bzip file")
+            info!("Opened a bzip file")
         }
         _ => {
-            println!("Opened  a random file");
+            info!("Opened  a random file");
             dialog::alert(550, 300, "Cannot open this filetype");
             // return garbage
             return (
